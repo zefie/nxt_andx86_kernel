@@ -45,7 +45,7 @@ static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
 	struct simple_dai_props *dai_props =
-		&priv->dai_props[rtd->num];
+		&priv->dai_props[rtd - rtd->card->rtd];
 	int ret;
 
 	ret = clk_prepare_enable(dai_props->cpu_dai.clk);
@@ -64,7 +64,7 @@ static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
 	struct simple_dai_props *dai_props =
-		&priv->dai_props[rtd->num];
+		&priv->dai_props[rtd - rtd->card->rtd];
 
 	clk_disable_unprepare(dai_props->cpu_dai.clk);
 
@@ -78,7 +78,8 @@ static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct simple_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
-	struct simple_dai_props *dai_props = &priv->dai_props[rtd->num];
+	struct simple_dai_props *dai_props =
+		&priv->dai_props[rtd - rtd->card->rtd];
 	unsigned int mclk, mclk_fs = 0;
 	int ret = 0;
 
@@ -99,7 +100,7 @@ static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
 		if (ret && ret != -ENOTSUPP)
 			goto err;
 	}
-	return 0;
+
 err:
 	return ret;
 }
@@ -150,9 +151,7 @@ static int __asoc_simple_card_dai_init(struct snd_soc_dai *dai,
 	}
 
 	if (set->slots) {
-		ret = snd_soc_dai_set_tdm_slot(dai,
-					       set->tx_slot_mask,
-					       set->rx_slot_mask,
+		ret = snd_soc_dai_set_tdm_slot(dai, 0, 0,
 						set->slots,
 						set->slot_width);
 		if (ret && ret != -ENOTSUPP) {
@@ -173,9 +172,10 @@ static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *codec = rtd->codec_dai;
 	struct snd_soc_dai *cpu = rtd->cpu_dai;
 	struct simple_dai_props *dai_props;
-	int ret;
+	int num, ret;
 
-	dai_props = &priv->dai_props[rtd->num];
+	num = rtd - rtd->card->rtd;
+	dai_props = &priv->dai_props[num];
 	ret = __asoc_simple_card_dai_init(codec, &dai_props->codec_dai);
 	if (ret < 0)
 		return ret;
@@ -243,9 +243,7 @@ asoc_simple_card_sub_parse_of(struct device_node *np,
 		return ret;
 
 	/* Parse TDM slot */
-	ret = snd_soc_of_parse_tdm_slot(np, &dai->tx_slot_mask,
-					&dai->rx_slot_mask,
-					&dai->slots, &dai->slot_width);
+	ret = snd_soc_of_parse_tdm_slot(np, &dai->slots, &dai->slot_width);
 	if (ret)
 		return ret;
 
