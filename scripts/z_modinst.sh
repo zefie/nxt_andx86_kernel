@@ -1,4 +1,9 @@
-#!/bin/sh
+#!/bin/bash
+if [ "$UID" -ne "0" ]; then
+	echo "Please run as root."
+	exit 1
+fi
+
 KVERS=`file arch/x86/boot/bzImage | cut -d' ' -f9`
 USBDISK=NXT_AND_X86
 
@@ -12,15 +17,6 @@ make INSTALL_MOD_PATH=/home/zefie/tmp modules_install
 
 echo "  REMOVE  sound/soc/intel/common/snd-soc-sst-acpi.ko"
 rm /home/zefie/tmp/lib/modules/$KVERS/kernel/sound/soc/intel/common/snd-soc-sst-acpi.ko
-
-#echo "  REMOVE  drivers/bluetooth/btintel.ko"
-#rm /home/zefie/tmp/lib/modules/$KVERS/kernel/drivers/bluetooth/btintel.ko
-
-#echo "  REMOVE  drivers/bluetooth/btbcm.ko"
-#rm /home/zefie/tmp/lib/modules/$KVERS/kernel/drivers/bluetooth/btbcm.ko
-
-#echo "  REMOVE  drivers/bluetooth/btqca.ko"
-#rm /home/zefie/tmp/lib/modules/$KVERS/kernel/drivers/bluetooth/btqca.ko
 
 echo "  DEPMOD  $KVERS"
 depmod $KVERS -b /home/zefie/tmp -a
