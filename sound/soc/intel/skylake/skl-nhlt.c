@@ -25,7 +25,7 @@ static u8 OSC_UUID[16] = {0x6E, 0x88, 0x9F, 0xA6, 0xEB, 0x6C, 0x94, 0x45,
 
 #define DSDT_NHLT_PATH "\\_SB.PCI0.HDAS"
 
-void *skl_nhlt_init(struct device *dev)
+void __iomem *skl_nhlt_init(struct device *dev)
 {
 	acpi_handle handle;
 	union acpi_object *obj;
@@ -40,22 +40,22 @@ void *skl_nhlt_init(struct device *dev)
 	if (obj && obj->type == ACPI_TYPE_BUFFER) {
 		nhlt_ptr = (struct nhlt_resource_desc  *)obj->buffer.pointer;
 
-		return memremap(nhlt_ptr->min_addr, nhlt_ptr->length,
-				MEMREMAP_WB);
+		return ioremap_cache(nhlt_ptr->min_addr, nhlt_ptr->length);
 	}
 
 	dev_err(dev, "device specific method to extract NHLT blob failed\n");
 	return NULL;
 }
 
-void skl_nhlt_free(void *addr)
+void skl_nhlt_free(void __iomem *addr)
 {
-	memunmap(addr);
+	iounmap(addr);
+	addr = NULL;
 }
 
 static struct nhlt_specific_cfg *skl_get_specific_cfg(
 		struct device *dev, struct nhlt_fmt *fmt,
-		u8 no_ch, u32 rate, u16 bps, u8 linktype)
+		u8 no_ch, u32 rate, u16 bps)
 {
 	struct nhlt_specific_cfg *sp_config;
 	struct wav_fmt *wfmt;
@@ -68,17 +68,11 @@ static struct nhlt_specific_cfg *skl_get_specific_cfg(
 		wfmt = &fmt_config->fmt_ext.fmt;
 		dev_dbg(dev, "ch=%d fmt=%d s_rate=%d\n", wfmt->channels,
 			 wfmt->bits_per_sample, wfmt->samples_per_sec);
-		if (wfmt->channels == no_ch && wfmt->bits_per_sample == bps) {
-			/*
-			 * if link type is dmic ignore rate check as the blob is
-			 * generic for all rates
-			 */
+		if (wfmt->channels == no_ch && wfmt->samples_per_sec == rate &&
+					wfmt->bits_per_sample == bps) {
 			sp_config = &fmt_config->config;
-			if (linktype == NHLT_LINK_DMIC)
-				return sp_config;
 
-			if (wfmt->samples_per_sec == rate)
-				return sp_config;
+			return sp_config;
 		}
 
 		fmt_config = (struct nhlt_fmt_cfg *)(fmt_config->config.caps +
@@ -121,7 +115,7 @@ struct nhlt_specific_cfg
 	struct device *dev = bus->dev;
 	struct nhlt_specific_cfg *sp_config;
 	struct nhlt_acpi_table *nhlt = (struct nhlt_acpi_table *)skl->nhlt;
-	u16 bps = (s_fmt == 16) ? 16 : 32;
+	u16 bps = num_ch * s_fmt;
 	u8 j;
 
 	dump_config(dev, instance, link_type, s_fmt, num_ch, s_rate, dirn, bps);
@@ -134,8 +128,7 @@ struct nhlt_specific_cfg
 		if (skl_check_ep_match(dev, epnt, instance, link_type, dirn)) {
 			fmt = (struct nhlt_fmt *)(epnt->config.caps +
 						 epnt->config.size);
-			sp_config = skl_get_specific_cfg(dev, fmt, num_ch,
-							s_rate, bps, link_type);
+			sp_config = skl_get_specific_cfg(dev, fmt, num_ch, s_rate, bps);
 			if (sp_config)
 				return sp_config;
 		}

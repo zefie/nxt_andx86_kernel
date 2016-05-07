@@ -48,34 +48,15 @@
 #define AZX_REG_VS_SDXEFIFOS_XBASE	0x1094
 #define AZX_REG_VS_SDXEFIFOS_XINTERVAL	0x20
 
-#define AZX_PCIREG_CGCTL		0x48
-#define AZX_CGCTL_MISCBDCGE_MASK	(1 << 6)
-
-struct skl_dsp_resource {
-	u32 max_mcps;
-	u32 max_mem;
-	u32 mcps;
-	u32 mem;
-};
-
 struct skl {
 	struct hdac_ext_bus ebus;
 	struct pci_dev *pci;
 
 	unsigned int init_failed:1; /* delayed init failed */
 	struct platform_device *dmic_dev;
-	struct platform_device *i2s_dev;
 
-	void *nhlt; /* nhlt ptr */
+	void __iomem *nhlt; /* nhlt ptr */
 	struct skl_sst *skl_sst; /* sst skl ctx */
-
-	struct skl_dsp_resource resource;
-	struct list_head ppl_list;
-
-	const char *fw_name;
-	const struct firmware *tplg;
-
-	int supend_active;
 };
 
 #define skl_to_ebus(s)	(&(s)->ebus)
@@ -91,8 +72,8 @@ struct skl_dma_params {
 int skl_platform_unregister(struct device *dev);
 int skl_platform_register(struct device *dev);
 
-void *skl_nhlt_init(struct device *dev);
-void skl_nhlt_free(void *addr);
+void __iomem *skl_nhlt_init(struct device *dev);
+void skl_nhlt_free(void __iomem *addr);
 struct nhlt_specific_cfg *skl_get_ep_blob(struct skl *skl, u32 instance,
 			u8 link_type, u8 s_fmt, u8 no_ch, u32 s_rate, u8 dirn);
 
