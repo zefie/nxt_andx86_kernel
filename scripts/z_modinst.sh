@@ -4,6 +4,11 @@ if [ "$UID" -ne "0" ]; then
 	exit 1
 fi
 
+NOMOUNT=0
+if [ "$1" == "nomount" ]; then
+	NOMOUNT=1;
+fi
+
 USBDISK=NXT_AND_X86
 
 KVERS=`file arch/x86/boot/bzImage | cut -d' ' -f9`
@@ -47,8 +52,10 @@ function ctrl_c() {
         exit 130
 }
 
-echo "   MOUNT  $MOUNTD/system.img"
-mount -o loop -t ext4 $MOUNTD/system.img $MOUNTP 2>/dev/null
+if [ "$NOMOUNT" -ne "1" ]; then
+	echo "   MOUNT  $MOUNTD/system.img"
+	mount -o loop -t ext4 $MOUNTD/system.img $MOUNTP 2>/dev/null
+fi
 
 if [ "$(df -h | grep $MOUNTP | wc -l)" -ne "1" ]; then
 	echo "  ERROR   Failed to mount system.img"
@@ -84,7 +91,8 @@ depmod $KVERS -b $MOUNTP -a
 echo "  INSTALL kernel"
 cp arch/x86/boot/bzImage $MOUNTD/kernel
 
-echo "  UMOUNT  $MOUNTD/system.img"
-umount $MOUNTP
-
-clean_mountp
+if [ "$NOMOUNT" -ne "1" ]; then
+	echo "  UMOUNT  $MOUNTD/system.img"
+	umount $MOUNTP
+	clean_mountp
+fi
