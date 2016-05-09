@@ -12,8 +12,8 @@ fi
 USBDISK=NXT_AND_X86
 
 KVERS=`file arch/x86/boot/bzImage | cut -d' ' -f9`
-MOUNTD=/media/$SUDO_USER/$USBDISK
 MOUNTP=$HOME/zefie_processing
+MOUNTD=$(df /dev/$(ls -l  /dev/disk/by-label | grep $USBDISK | rev | cut -d'/' -f1 | rev) | rev | cut -d'%' -f1 | cut -d' ' -f1 | grep / | rev)
 
 
 if [ ! -d $MOUNTD ]; then
@@ -88,7 +88,7 @@ make SUBDIRS=external/rtl8723bs-bluetooth clean 2>&1 > /dev/null
 echo "  DEPMOD  $KVERS"
 depmod $KVERS -b $MOUNTP -a
 
-echo "  INSTALL kernel"
+echo "  INSTALL $MOUNTD/kernel"
 cp arch/x86/boot/bzImage $MOUNTD/kernel
 
 if [ "$NOMOUNT" -ne "1" ]; then
