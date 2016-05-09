@@ -4,24 +4,64 @@ if [ "$UID" -ne "0" ]; then
 	exit 1
 fi
 
-KVERS=`file arch/x86/boot/bzImage | cut -d' ' -f9`
 USBDISK=NXT_AND_X86
 
-echo "  MOUNT   /media/zefie/$USBDISK/system.img"
-mount -o loop -t ext4 /media/zefie/$USBDISK/system.img /home/zefie/tmp
+KVERS=`file arch/x86/boot/bzImage | cut -d' ' -f9`
+MOUNTD=/media/$SUDO_USER/$USBDISK
+MOUNTP=$HOME/zefie_processing
 
-if [ "$(df -h | grep /home/zefie/tmp | wc -l)" -ne "1" ]; then
+
+if [ ! -d $MOUNTD ]; then
+	MOUNTD=$MOUNTD
+	if [ ! -d $MOUNTD ]; then
+		echo "  ERROR   Cannot find $USBDISK"
+		echo "This is not a download-and-run script. It was designed to"
+		echo "make my life easier, and may need adjustment for usage"
+		echo "on other systems."
+		exit 1;
+	fi
+fi
+
+if [ ! -d "$MOUNTP" ]; then
+        echo "    INFO  Creating $MOUNTP"
+        mkdir $MOUNTP;
+fi
+
+function clean_mountp() {
+        if [ "$(ls -A $MOUNTP)" ]; then
+                echo "    WARN  Not removing $MOUNTP ... Not empty"
+        else
+                echo "    INFO  Removing $MOUNTP"
+                rmdir $MOUNTP
+        fi
+}
+
+trap ctrl_c INT
+
+function ctrl_c() {
+	echo -ne '\r'
+        echo "    WARN  CTRL-C Pressed... cancelling"
+        echo "  UMOUNT  $MOUNTD/system.img"
+        umount $MOUNTP 2>/dev/null
+	clean_mountp
+        exit 130
+}
+
+echo "   MOUNT  $MOUNTD/system.img"
+mount -o loop -t ext4 $MOUNTD/system.img $MOUNTP 2>/dev/null
+
+if [ "$(df -h | grep $MOUNTP | wc -l)" -ne "1" ]; then
 	echo "  ERROR   Failed to mount system.img"
 	exit 1;
 fi
 
-echo "  REMOVE  Existing modules for: $KVERS"
-rm -r /home/zefie/tmp/lib/modules/$KVERS
+echo "  REMOVE  ALL Existing modules"
+rm -r $MOUNTP/lib/modules/* 2>/dev/null
 
-make INSTALL_MOD_PATH=/home/zefie/tmp modules_install
+make INSTALL_MOD_PATH=$MOUNTP modules_install
 
 echo "  REMOVE  sound/soc/intel/common/snd-soc-sst-acpi.ko"
-rm /home/zefie/tmp/lib/modules/$KVERS/kernel/sound/soc/intel/common/snd-soc-sst-acpi.ko
+rm $MOUNTP/lib/modules/$KVERS/kernel/sound/soc/intel/common/snd-soc-sst-acpi.ko
 
 echo "  BUILD   external/rtl8723bs-bluetooth/hci_uart.ko"
 make SUBDIRS=external/rtl8723bs-bluetooth clean 2>&1 > /dev/null
@@ -32,17 +72,19 @@ if [ ! -f "external/rtl8723bs-bluetooth/hci_uart.ko" ]; then
 	echo "  ERROR   Building rtl8723bs-bluetooth hci_uart failed"
 else
 	echo "  INSTALL drivers/bluetooth/hci_uart.ko"
-	cp external/rtl8723bs-bluetooth/hci_uart.ko /home/zefie/tmp/lib/modules/$KVERS/kernel/drivers/bluetooth/hci_uart.ko
+	cp external/rtl8723bs-bluetooth/hci_uart.ko $MOUNTP/lib/modules/$KVERS/kernel/drivers/bluetooth/hci_uart.ko
 fi
 
 echo "  CLEAN   external/rtl8723bs-bluetooth/hci_uart.ko"
 make SUBDIRS=external/rtl8723bs-bluetooth clean 2>&1 > /dev/null
 
 echo "  DEPMOD  $KVERS"
-depmod $KVERS -b /home/zefie/tmp -a
+depmod $KVERS -b $MOUNTP -a
 
 echo "  INSTALL kernel"
-cp arch/x86/boot/bzImage /media/zefie/$USBDISK/kernel
+cp arch/x86/boot/bzImage $MOUNTD/kernel
 
-echo "  UMOUNT  /media/zefie/$USBDISK/system.img"
-umount /home/zefie/tmp
+echo "  UMOUNT  $MOUNTD/system.img"
+umount $MOUNTP
+
+clean_mountp
