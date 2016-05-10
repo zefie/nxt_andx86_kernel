@@ -28,15 +28,15 @@ if [ ! -d $MOUNTD ]; then
 fi
 
 if [ ! -d "$MOUNTP" ]; then
-        echo "    INFO  Creating $MOUNTP"
+        echo "  INFO    Creating $MOUNTP"
         mkdir $MOUNTP;
 fi
 
 function clean_mountp() {
         if [ "$(ls -A $MOUNTP)" ]; then
-                echo "    WARN  Not removing $MOUNTP ... Not empty"
+                echo "  WARN    Not removing $MOUNTP ... Not empty"
         else
-                echo "    INFO  Removing $MOUNTP"
+                echo "  INFO    Removing $MOUNTP"
                 rmdir $MOUNTP
         fi
 }
@@ -45,7 +45,7 @@ trap ctrl_c INT
 
 function ctrl_c() {
 	echo -ne '\r'
-        echo "    WARN  CTRL-C Pressed... cancelling"
+        echo "  WARN    CTRL-C Pressed... cancelling"
         echo "  UMOUNT  $MOUNTD/system.img"
         umount $MOUNTP 2>/dev/null
 	clean_mountp
@@ -53,7 +53,7 @@ function ctrl_c() {
 }
 
 if [ "$NOMOUNT" -ne "1" ]; then
-	echo "   MOUNT  $MOUNTD/system.img"
+	echo "  MOUNT   $MOUNTD/system.img"
 	mount -o loop -t ext4 $MOUNTD/system.img $MOUNTP 2>/dev/null
 fi
 
@@ -65,7 +65,8 @@ fi
 echo "  REMOVE  ALL Existing modules"
 rm -r $MOUNTP/lib/modules/* 2>/dev/null
 
-make INSTALL_MOD_PATH=$MOUNTP modules_install
+echo "  INSTALL Kernel $KVERS modules"
+make INSTALL_MOD_PATH=$MOUNTP modules_install > /dev/null
 
 echo "  REMOVE  sound/soc/intel/common/snd-soc-sst-acpi.ko"
 rm $MOUNTP/lib/modules/$KVERS/kernel/sound/soc/intel/common/snd-soc-sst-acpi.ko
