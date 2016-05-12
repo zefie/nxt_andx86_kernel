@@ -7,6 +7,15 @@
 #ifndef __RTW_WIFI_REGD_H__
 #define __RTW_WIFI_REGD_H__
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,5,0)
+	#ifndef IEEE80211_NUM_BANDS
+	#define ieee80211_band nl80211_band
+	#define IEEE80211_BAND_2GHZ NL80211_BAND_2GHZ
+	#define IEEE80211_BAND_5GHZ NL80211_BAND_5GHZ
+	#define IEEE80211_NUM_BANDS NUM_NL80211_BANDS
+	#endif
+#endif
+
 struct country_code_to_enum_rd {
 	u16 countrycode;
 	const char *iso_name;
