@@ -60,6 +60,7 @@
 #define BYT_FW_MOD_TABLE_OFFSET	0x80000
 #define BYT_FW_MOD_TABLE_SIZE	0x100
 #define BYT_FW_MOD_OFFSET	(BYT_FW_MOD_TABLE_OFFSET + BYT_FW_MOD_TABLE_SIZE)
+#define BYT_SST_IRQ_INDEX	0
 
 static const struct sst_info byt_fwparse_info = {
 	.use_elf	= false,
@@ -109,7 +110,7 @@ static const struct sst_res_info byt_rvp_res_info = {
 	.mbox_size = 0x1000,
 	.acpi_lpe_res_index = 0,
 	.acpi_ddr_index = 2,
-	.acpi_ipc_irq_index = 5,
+	.acpi_ipc_irq_index = BYT_SST_IRQ_INDEX,
 };
 
 static struct sst_platform_info byt_rvp_platform_data = {
